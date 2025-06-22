@@ -57,41 +57,45 @@ route.post("/signup", async (req, res) => {
  }
 
 })
-route.post("/signin",async(req,res)=>{
-    try{
-    const userdata=usersigin.safeParse(req.body)
-    if(!userdata.success){
-        res.status(411).json({
-            message:"Incorrect inputs"
-        })
-    }
-    else{
-       const userexist = await user.findOne({ username });
-if (userexist) {
-    const passwordMatch = await bcrypt.compare(req.body.password, userexist.password);
-    if (!passwordMatch) {
-        return res.status(411).json({ message: "Incorrect password" });
+route.post("/signin", async (req, res) => {
+  try {
+    const userdata = usersigin.safeParse(req.body);
+    if (!userdata.success) {
+      return res.status(411).json({
+        message: "Incorrect inputs"
+      });
     }
 
-    const userid = userexist._id;
-    const token = jwt.sign({ userid }, JWT_SECRETE);
-    return res.status(200).json({
+    const { username, password } = req.body; 
+    const userexist = await user.findOne({ username });
+
+    if (userexist) {
+      const passwordMatch = await bcrypt.compare(password, userexist.password);
+      if (!passwordMatch) {
+        return res.status(411).json({ message: "Incorrect password" });
+      }
+
+      const userid = userexist._id;
+      const token = jwt.sign({ userid }, JWT_SECRETE);
+
+      return res.status(200).json({
         message: "Login successful",
         token,
         userid
-    });
-} else {
-    return res.status(411).json({
+      });
+    } else {
+      return res.status(411).json({
         message: "User not found"
+      });
+    }
+  } catch (e) {
+    console.error("Login error:", e);
+    res.status(411).json({
+      message: "Error while login"
     });
-}
-    }
-    }catch(e){
-        res.status(411).json({
-            message:"error while login"
-        })
-    }
-})
+  }
+});
+
 route.put("/update",userexist,async(req,res)=>{
     const userdata=req.body
    

@@ -5,6 +5,7 @@ const {usertype,usersigin,updateuser}=require("../zod/typezod")
 const jwt=require("jsonwebtoken")
 const {JWT_SECRETE}=require("../jwttoken/config")
 const {userexist}=require("../middleware/usermiddleware")
+const bcrypt = require("bcrypt");
 
 
 route.post("/signup", async (req, res) => {
@@ -20,7 +21,9 @@ route.post("/signup", async (req, res) => {
      const username=req.body.username
      const firstname=req.body.firstname
      const lastname=req.body.lastname
-     const password=req.body.password
+    const plainPassword = req.body.password;
+     const password = await bcrypt.hash(plainPassword, 10);
+
      const finduser=await user.findOne({username})
      if(finduser){
         res.status(200).json({
@@ -63,26 +66,25 @@ route.post("/signin",async(req,res)=>{
         })
     }
     else{
-        const username=req.body.username
-        const password=req.body.password
-        const userexist=await user.findOne({username,
-            password
-        })
-        if(userexist){
-            const userid=userexist._id
-            const token=jwt.sign({userid},JWT_SECRETE)
-             res.status(200).json({
-             message:"User created successfully",
-             token,
-            userid
-            })
-            return;
-        }
-        else{
-            res.status(411).json({
-                message: "Error while logging in"
-            })
-        }
+       const userexist = await user.findOne({ username });
+if (userexist) {
+    const passwordMatch = await bcrypt.compare(req.body.password, userexist.password);
+    if (!passwordMatch) {
+        return res.status(411).json({ message: "Incorrect password" });
+    }
+
+    const userid = userexist._id;
+    const token = jwt.sign({ userid }, JWT_SECRETE);
+    return res.status(200).json({
+        message: "Login successful",
+        token,
+        userid
+    });
+} else {
+    return res.status(411).json({
+        message: "User not found"
+    });
+}
     }
     }catch(e){
         res.status(411).json({
